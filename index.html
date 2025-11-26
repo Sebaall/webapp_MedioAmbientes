@@ -335,10 +335,8 @@
             <div class="header-content">
                 
                 <div class="home-top-bar">
-                    <div class="btn-back-modern">
-                        <span>☰</span> Menú
-                    </div>
-                    <div class="brand-top"><span>♻️ MUNI LOS ÁNGELES</span></div>
+
+                    <div class="brand-top"><span>♻️ MUNICIPALIDAD DE LOS ÁNGELES</span></div>
                 </div>
 
                 <h1 class="welcome-title">HOLA VECINO 👋</h1>
@@ -401,7 +399,7 @@
 
     <section id="materiales" class="screen">
         <div class="header-solid-green">
-            <h2 class="cat-title">Categorías</h2>
+            <h2 class="cat-title">Residuos</h2>
             <div class="btn-back-modern" style="margin-top: 15px;" onclick="openScreen('home')">
                 <span>←</span> Volver
             </div>
@@ -606,6 +604,8 @@
 
     // ====== LÓGICA DE MAPA (INTACTA) ======
     const RADIO_KM = 60; 
+        let todosLosMarcadores = [];
+
 
     const puntosReciclaje = [
         { name: "Unimarc Marconi (Vidrio/PET)", type: "mixto", lat: -37.4632, lng: -72.3592, desc: "Marconi / Almte Latorre" },
@@ -813,6 +813,8 @@
     });
 
     const marker = L.marker([p.lat, p.lng], { icon: customIcon }).addTo(map);
+    todosLosMarcadores.push(marker);
+
 
     marker.bindPopup(`
         <div style="text-align:center;">
@@ -835,6 +837,13 @@
         limpiarRuta(false);
         map.closePopup();
         isNavigating = true;
+
+        todosLosMarcadores.forEach(m => {
+        const p = m.getLatLng();
+        if (p.lat !== destLat || p.lng !== destLng) {
+            map.removeLayer(m);
+        }
+    });
 
         document.getElementById('navPanel').style.display = 'block';
         document.getElementById('closeRouteBtn').style.display = 'block';
@@ -883,6 +892,10 @@
         document.getElementById('closeRouteBtn').style.display = 'none';
         isNavigating = false;
 
+         todosLosMarcadores.forEach(m => {
+        if (!map.hasLayer(m)) map.addLayer(m);
+    });
+    
         if (centrar && myPosition && map) {
              map.flyTo([myPosition.lat, myPosition.lng], 15, { duration: 1.5 });
         }
