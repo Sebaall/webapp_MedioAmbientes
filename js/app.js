@@ -1,144 +1,341 @@
-/* ======= CONFIGURACIÓN ======= */
-const MAX_RADIUS_KM = 5000; // ¡AUMENTADO A 5000KM PARA QUE VEAS TODO!
-
-// TUS PUNTOS DE RECICLAJE
-const allRecyclePoints = [
-    { name: "Punto Verde - Valparaíso", type: "vidrio", lat: -33.0458, lng: -71.6197 }, 
-    { name: "Recicla Plástico Sur", type: "plastico", lat: -33.0500, lng: -71.6250 },
-    { name: "Punto Limpio Los Ángeles", type: "mixto", lat: -37.4697, lng: -72.3537 }, 
-    { name: "Punto Santiago Centro", type: "papel", lat: -33.4489, lng: -70.6693 } 
+/* =========================================================================
+   🔵 1) DATOS FALLBACK (SI EL SCRAPER FALLA)
+   ========================================================================= */
+const fallbackData = [
+    {
+        title: "Los Ángeles la ciudad más parrillera de Chile",
+        date: "21 Nov",
+        img: "https://www.losangeles.cl/wp-content/uploads/2025/11/2-hyhx93.jpg",
+        link: "https://www.losangeles.cl/los-angeles-la-ciudad-mas-parrillera-de-chile/"
+    },
+    {
+        title: "Ruta Q-148 de Chacaico entra en tierra derecha",
+        date: "21 Nov",
+        img: "https://www.losangeles.cl/wp-content/uploads/2025/11/captura-de-pantalla-2025-11-21-152753-400x250.png",
+        link: "https://www.losangeles.cl/ruta-q-148-de-chacaico-entra-en-tierra-derecha-para-su-pavimentacion/"
+    },
+    {
+        title: "Alumno angelino en Olimpiadas de Química",
+        date: "21 Nov",
+        img: "https://www.losangeles.cl/wp-content/uploads/2025/11/matias-cid-400x250.jpg",
+        link: "https://www.losangeles.cl/alumno-angelino-representara-a-la-comuna-en-olimpiadas-nacionales-de-quimica/"
+    },
+    {
+        title: "CESFAM llama a buen uso de antimicrobianos",
+        date: "20 Nov",
+        img: "https://www.losangeles.cl/wp-content/uploads/2025/11/semana-antimicrobianos-cesfam-sur-3-400x250.jpg",
+        link: "https://www.losangeles.cl/cesfam-de-los-angeles-llaman-a-hacer-un-buen-uso-de-los-antimicrobianos/"
+    }
 ];
 
-let map = null;
+/* =========================================================================
+   🔵 2) SCRAPER DE NOTICIAS
+   ========================================================================= */
+const URL_OBJETIVO = "https://www.losangeles.cl/noticias/";
+const PROXY_URL = "https://api.allorigins.win/get?url=";
 
-// Navegación
+async function cargarNoticias() {
+    try {
+        console.log("Iniciando Scraper de Noticias...");
+
+        // 1) Obtener HTML por proxy
+        const response = await fetch(PROXY_URL + encodeURIComponent(URL_OBJETIVO));
+        const data = await response.json();
+
+        if (!data.contents) throw new Error("No se pudo obtener el HTML");
+
+        // 2) Parsear HTML
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(data.contents, "text/html");
+
+        // 3) Buscar noticias
+        const articulos = doc.querySelectorAll("article, .post, .type-post");
+        const noticias = [];
+
+        articulos.forEach((articulo, index) => {
+            if (index > 8) return;
+
+            const tituloEl = articulo.querySelector("h2, h3, .entry-title a, .post-title a");
+            const imgEl = articulo.querySelector("img");
+            const dateEl = articulo.querySelector("time, .date, .posted-on, .entry-date");
+            const linkEl = articulo.querySelector("a");
+
+            if (tituloEl && linkEl) {
+                let imgSrc = imgEl ? (imgEl.src || imgEl.getAttribute("data-src")) : "";
+                if (!imgSrc) imgSrc = "https://via.placeholder.com/400x250?text=Noticia+LA";
+
+                let link = linkEl.getAttribute("href");
+                if (link.startsWith("/")) link = "https://losangeles.cl" + link;
+
+                noticias.push({
+                    title: tituloEl.innerText.trim(),
+                    link,
+                    img: imgSrc,
+                    date: dateEl ? dateEl.innerText.trim() : "Reciente"
+                });
+            }
+        });
+
+        if (noticias.length === 0) throw new Error("Nada parseado");
+
+        renderizarNoticias(noticias);
+
+    } catch (e) {
+        console.warn("SCRAPER FALLÓ → usando fallback", e);
+        renderizarNoticias(fallbackData);
+    }
+}
+
+/* =========================================================================
+   🔵 3) RENDERIZAR NOTICIAS EN HOME + GRID
+   ========================================================================= */
+function renderizarNoticias(items) {
+    const home = document.getElementById("home-news-container");
+    const list = document.getElementById("news-list");
+
+    home.innerHTML = "";
+    list.innerHTML = "";
+
+    items.forEach((item, index) => {
+
+        // HOME → Solo primera noticia
+        if (index === 0) {
+            home.innerHTML = `
+                <div class="news-card-home" onclick="window.open('${item.link}', '_blank')">
+                    <img src="${item.img}" alt="Portada" onerror="this.src='https://via.placeholder.com/90'">
+                    <div class="news-card-home-content">
+                        <div class="news-card-home-title">${item.title}</div>
+                        <div class="news-card-home-date">📅 ${item.date}</div>
+                    </div>
+                </div>`;
+        }
+
+        // GRID COMPLETO
+        list.innerHTML += `
+            <div class="full-news-card" onclick="window.open('${item.link}', '_blank')">
+                <img src="${item.img}" class="full-news-img" onerror="this.src='https://via.placeholder.com/400x200'">
+                <div class="full-news-body">
+                    <span class="full-news-date">📅 ${item.date}</span>
+                    <div class="full-news-title">${item.title}</div>
+                    <div class="full-news-link">Leer nota completa →</div>
+                </div>
+            </div>`;
+    });
+}
+
+document.addEventListener("DOMContentLoaded", cargarNoticias);
+
+/* =========================================================================
+   🔵 4) NAVEGACIÓN ENTRE SECCIONES
+   ========================================================================= */
 function openScreen(id) {
-    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-    document.getElementById(id).classList.add('active');
-    if (id === 'map') initMap();
+    document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+    document.getElementById(id).classList.add("active");
+
+    if (id === "map") {
+        setTimeout(iniciarRastreo, 200);
+    }
 }
 
-function initMap() {
+/* =========================================================================
+   🔵 5) MAPA – CONFIGURACIÓN BASE
+   ========================================================================= */
+const RADIO_KM = 60;
+
+let map = null;
+let routingControl = null;
+let myPosition = null;
+let userMarker = null;
+let watchId = null;
+let isNavigating = false;
+
+/* =========================================================================
+   🔵 6) INICIAR GPS + MAPA
+   ========================================================================= */
+function iniciarRastreo() {
     if (map) {
-        setTimeout(() => map.invalidateSize(), 100);
+        map.invalidateSize();
         return;
     }
 
-    // Verificar si el navegador soporta GPS
-    if (!navigator.geolocation) {
-        alert("Tu dispositivo no tiene GPS activo.");
-        // Cargar mapa por defecto en Chile si falla el GPS
-        loadDefaultMap(-33.4489, -70.6693); 
-        return;
-    }
+    const defaultLat = -37.4697;
+    const defaultLng = -72.3537;
 
-    navigator.geolocation.getCurrentPosition(
-        (pos) => {
-            // ÉXITO: Tenemos ubicación real
-            console.log("Ubicación detectada:", pos.coords.latitude, pos.coords.longitude);
-            loadMapLayers(pos.coords.latitude, pos.coords.longitude);
-        }, 
-        (err) => {
-            // ERROR: El usuario denegó permiso o falló
-            console.error(err);
-            alert("No pudimos detectar tu ubicación. Cargando mapa general.");
-            loadMapLayers(-33.4489, -70.6693); // Carga en Santiago por defecto
-        },
-        { enableHighAccuracy: true } // Pedir máxima precisión
-    );
-}
+    map = L.map("mapView", { zoomControl: false }).setView([defaultLat, defaultLng], 14);
 
-function loadMapLayers(lat, lng) {
-    // 1. Crear Mapa
-    map = L.map('mapView', { zoomControl: false }).setView([lat, lng], 10); // Zoom más alejado (10) para ver más mapa
-
-    // 2. Capa Oscura
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        attribution: '© OpenStreetMap, © CartoDB',
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
         maxZoom: 19
     }).addTo(map);
 
-    // 3. Marcador del Usuario (Solo si tenemos GPS real)
-    const userIcon = L.divIcon({
-        className: 'user-pin',
-        html: '<div style="background-color:#2979FF; width:16px; height:16px; border-radius:50%; border:3px solid white; box-shadow:0 0 15px #2979FF;"></div>',
-        iconSize: [20, 20],
-        iconAnchor: [10, 10]
-    });
-    L.marker([lat, lng], {icon: userIcon}).addTo(map).bindPopup("<b>Tú estás aquí</b>").openPopup();
-
-    // 4. Cargar Puntos
-    filterAndShowPoints(lat, lng);
+    if (navigator.geolocation) {
+        watchId = navigator.geolocation.watchPosition(
+            pos => actualizarPosicion(pos.coords.latitude, pos.coords.longitude),
+            () => actualizarPosicion(defaultLat, defaultLng),
+            { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+        );
+    } else {
+        actualizarPosicion(defaultLat, defaultLng);
+    }
 }
 
-function filterAndShowPoints(userLat, userLng) {
-    // FILTRO DESACTIVADO: Mostramos TODOS los puntos para probar
-    // Si quieres activar el filtro después, cambia true por la condición de distancia
-    const nearbyPoints = allRecyclePoints; 
+/* =========================================================================
+   🔵 7) ACTUALIZAR UBICACIÓN EN TIEMPO REAL
+   ========================================================================= */
+function actualizarPosicion(lat, lng) {
+    myPosition = { lat, lng };
 
-    if(nearbyPoints.length === 0) {
-        alert("No se encontraron puntos en la base de datos.");
-    }
-
-    nearbyPoints.forEach(p => {
-        // Calcular distancia solo para mostrarla en el popup
-        const dist = getDistanceFromLatLonInKm(userLat, userLng, p.lat, p.lng).toFixed(1);
-
-        // Color según tipo
-        let color = '#00E676'; // Verde default
-        if(p.type === 'vidrio') color = '#2979FF'; // Azul
-        if(p.type === 'papel') color = '#FFD600'; // Amarillo
-
-        // HTML del marcador (Punto brillante)
-        const markerHtml = `
-            <div style="
-                background-color: ${color};
-                width: 14px;
-                height: 14px;
-                border-radius: 50%;
-                border: 2px solid #fff;
-                box-shadow: 0 0 10px ${color};
-            "></div>`;
-
-        const icon = L.divIcon({
-            className: 'custom-pin',
-            html: markerHtml,
-            iconSize: [18, 18],
-            iconAnchor: [9, 9] // Centrar el punto
+    if (!userMarker) {
+        const userIcon = L.divIcon({
+            className: "user-pulse",
+            html: `<div style="width:16px;height:16px;background:#2ECC71;border:2px solid white;border-radius:50%;box-shadow:0 0 10px #2ECC71;"></div>`
         });
 
-        const marker = L.marker([p.lat, p.lng], { icon: icon }).addTo(map);
+        userMarker = L.marker([lat, lng], { icon: userIcon, zIndexOffset: 1000 }).addTo(map);
+        map.setView([lat, lng], 15);
+        procesarPuntos(lat, lng);
 
-        // Popup mejorado
-        marker.bindPopup(`
-            <div style="text-align:center; color:#333; font-family:sans-serif;">
-                <h3 style="margin:0 0 5px 0; font-size:16px;">${p.name}</h3>
-                <span style="font-size:11px; background:#eee; padding:2px 6px; border-radius:4px;">
-                    ${p.type.toUpperCase()} • A ${dist} km
-                </span>
-                <br>
-                <button onclick="openRoute(${p.lat}, ${p.lng})" 
-                    style="margin-top:10px; background:#111; color:#fff; border:none; padding:8px 16px; border-radius:20px; cursor:pointer; font-weight:bold; font-size:12px;">
-                    📍 Ir con GPS
-                </button>
-            </div>
-        `);
+    } else {
+        userMarker.setLatLng([lat, lng]);
+    }
+
+    if (isNavigating && routingControl) {
+        map.panTo([lat, lng]);
+        const destino = routingControl.getWaypoints().slice(-1)[0].latLng;
+        routingControl.setWaypoints([L.latLng(lat, lng), destino]);
+    }
+}
+
+/* =========================================================================
+   🔵 8) MARCADORES DE PUNTOS DE RECICLAJE
+   ========================================================================= */
+function procesarPuntos(lat, lng) {
+    puntosReciclaje.forEach(p => {
+        const dist = calcularDistancia(lat, lng, p.lat, p.lng);
+        if (dist <= RADIO_KM) crearMarcador(p, dist);
     });
 }
 
-function openRoute(lat, lng) {
-    const url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`;
-    window.open(url, '_blank');
+function crearMarcador(p, dist) {
+    let pinColor = "#2ECC71";
+
+    if (p.type === "vidrio") pinColor = "#3498DB";
+    if (p.type === "plastico") pinColor = "#E67E22";
+    if (p.type === "papel") pinColor = "#F1C40F";
+
+    const icon = L.divIcon({
+        html: `
+        <div style="position:relative;width:24px;height:34px;">
+            <div style="width:24px;height:24px;border-radius:50% 50% 50% 0;background:${pinColor};
+                 position:absolute;transform:rotate(-45deg);left:0;top:0;
+                 box-shadow:0 2px 5px rgba(0,0,0,0.5);"></div>
+            <div style="width:14px;height:14px;background:white;border-radius:50%;
+                 position:absolute;top:2px;left:5px;"></div>
+        </div>`,
+        iconSize: [24, 34],
+        iconAnchor: [12, 34]
+    });
+
+    const m = L.marker([p.lat, p.lng], { icon }).addTo(map);
+
+    m.bindPopup(`
+        <div style="text-align:center;">
+            <strong style="font-size:16px;">${p.name}</strong><br>
+            <span style="color:#aaa;font-size:12px;">${p.desc}</span><br>
+            <span style="display:inline-block;background:rgba(255,255,255,0.1);
+                          padding:2px 8px;border-radius:10px;font-size:11px;margin:5px 0;">
+                📍 A ${dist.toFixed(1)} km
+            </span>
+            <button class="btn-navigate" onclick="calcularRuta(${p.lat}, ${p.lng})">🚀 IR AHORA</button>
+        </div>
+    `);
 }
 
-// Matemáticas GPS
-function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
-    const R = 6371; 
-    const dLat = deg2rad(lat2 - lat1);
-    const dLon = deg2rad(lon2 - lon1);
-    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-              Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) * Math.sin(dLon/2) * Math.sin(dLon/2); 
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
-    return R * c; 
+/* =========================================================================
+   🔵 9) NAVEGACIÓN GPS (RUTA)
+   ========================================================================= */
+function calcularRuta(destLat, destLng) {
+    if (!myPosition) return alert("Esperando señal GPS...");
+
+    limpiarRuta(false);
+    map.closePopup();
+    isNavigating = true;
+
+    document.getElementById("navPanel").style.display = "block";
+    document.getElementById("closeRouteBtn").style.display = "block";
+
+    routingControl = L.Routing.control({
+        waypoints: [
+            L.latLng(myPosition.lat, myPosition.lng),
+            L.latLng(destLat, destLng)
+        ],
+        routeWhileDragging: false,
+        language: "es",
+        show: false,
+        lineOptions: {
+            styles: [{ color: "#2ECC71", opacity: 0.8, weight: 7 }]
+        },
+        createMarker: () => null,
+        addWaypoints: false
+    }).addTo(map);
+
+    routingControl.on("routesfound", e => {
+        const r = e.routes[0];
+        const s = r.summary;
+
+        const dist = s.totalDistance < 1000
+            ? `${Math.round(s.totalDistance)} m`
+            : `${(s.totalDistance / 1000).toFixed(1)} km`;
+
+        const time = `${Math.round(s.totalTime / 60)} min`;
+
+        document.getElementById("navDistance").innerText = dist;
+        document.getElementById("navTime").innerText = time;
+
+        const step = r.instructions[0];
+        document.getElementById("navDirection").innerHTML = getIcon(step.type) + " " + step.text;
+    });
 }
-function deg2rad(deg) { return deg * (Math.PI/180); }
+
+function getIcon(type) {
+    if (type === "Left") return "⬅️";
+    if (type === "Right") return "➡️";
+    if (type === "Straight") return "⬆️";
+    if (type === "Roundabout") return "🔄";
+    return "📍";
+}
+
+/* =========================================================================
+   🔵 10) LIMPIAR RUTA
+   ========================================================================= */
+function limpiarRuta(centrar = true) {
+    if (routingControl) map.removeControl(routingControl);
+
+    document.getElementById("navPanel").style.display = "none";
+    document.getElementById("closeRouteBtn").style.display = "none";
+
+    routingControl = null;
+    isNavigating = false;
+
+    if (centrar && myPosition) {
+        map.flyTo([myPosition.lat, myPosition.lng], 15, { duration: 1.5 });
+    }
+}
+
+/* =========================================================================
+   🔵 11) HERRAMIENTAS GPS
+   ========================================================================= */
+function calcularDistancia(lat1, lon1, lat2, lon2) {
+    const R = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+
+    const a =
+        Math.sin(dLat/2)**2 +
+        Math.cos(lat1 * Math.PI/180) *
+        Math.cos(lat2 * Math.PI/180) *
+        Math.sin(dLon/2)**2;
+
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+    return R * c;
+}

@@ -5,410 +5,126 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     
     <title>ReciclaMap Los Ángeles</title>
-    
+
+    <!-- MANIFEST + THEME -->
     <link rel="manifest" href="manifest.json" />
     <meta name="theme-color" content="#8BC34A">
 
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>♻️</text></svg>">
+    <!-- ÍCONO -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>♻️</text></svg>">
 
+    <!-- FUENTES -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    
+
+    <!-- LEAFLET MAP -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
 
-    <style>
-        /* ======= ESTILOS GENERALES ======= */
-        :root {
-            --bg-body: #000000;
-            --font-main: 'Inter', sans-serif;
-            --card-green: #7CB342;
-            --card-blue: #42A5F5;
-            --card-orange: #FFA726;
-            --card-teal: #26C6DA;
-            /* Altura segura para evitar barras del navegador móvil */
-            --app-height: 100dvh; 
-        }
-
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-
-        html, body {
-            margin: 0; padding: 0;
-            background-color: var(--bg-body); 
-            color: white;
-            font-family: var(--font-main);
-            overflow: hidden; /* Evita scroll en el body principal */
-            height: 100%; width: 100%;
-        }
-
-        #app { 
-            width: 100%; 
-            height: var(--app-height); 
-            position: relative; 
-            display: flex; 
-            flex-direction: column; 
-        }
-
-        /* PANTALLAS CON SCROLL INTERNO */
-        .screen {
-            display: none; 
-            height: 100%; 
-            width: 100%;
-            overflow-y: auto; /* Scroll suave dentro de cada pantalla */
-            -webkit-overflow-scrolling: touch;
-            background: #000;
-            animation: fadeIn 0.3s ease;
-            padding-bottom: 80px; /* Espacio extra abajo para no chocar con gestos del celular */
-        }
-        .screen.active { display: block; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-
-        /* HEADER PLANETA (SOLO HOME/NOTICIAS) */
-        .header-illustration {
-            background: linear-gradient(180deg, #AED581 0%, #7CB342 100%);
-            padding: 50px 20px 0px 20px;
-            position: relative;
-            border-bottom-left-radius: 40px;
-            border-bottom-right-radius: 40px;
-            overflow: hidden;
-            min-height: 240px; /* Un poco más compacto en móviles */
-            display: flex; flex-direction: column;
-            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
-        }
-
-        /* HEADER SOLIDO VERDE (PARA CATEGORIAS) */
-        .header-solid-green {
-            background-color: #9CCC65; 
-            padding: 50px 24px 30px 24px;
-            border-bottom-left-radius: 35px;
-            border-bottom-right-radius: 35px;
-            margin-bottom: 15px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-            position: relative; z-index: 10;
-        }
-        .cat-title {
-            font-size: 30px; font-weight: 800; margin: 0; line-height: 1.1; color: white;
-            text-shadow: 0 1px 2px rgba(0,0,0,0.1);
-        }
-
-        /* BOTÓN VOLVER/MENU MODERNO */
-        .btn-back-modern {
-            display: inline-flex; align-items: center; gap: 8px;
-            /* margin-top: 15px;  <- Quitamos el margen fijo para usarlo en el home */
-            padding: 8px 16px;
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 30px;
-            color: white;
-            font-weight: 600; font-size: 14px;
-            cursor: pointer; transition: all 0.2s ease;
-            backdrop-filter: blur(5px);
-            border: 1px solid rgba(255,255,255,0.3);
-        }
-        .btn-back-modern:active { transform: scale(0.95); background: rgba(255, 255, 255, 0.3); }
-
-        /* NUBES Y DECORACIÓN */
-        .cloud-shape { position: absolute; background: #FFFFFF; border-radius: 50%; bottom: -30px; box-shadow: 0 0 20px rgba(0,0,0,0.05); }
-        .c1 { width: 80px; height: 80px; left: 5%; }
-        .c2 { width: 60px; height: 60px; left: 20%; bottom: -20px; }
-        .c3 { width: 100px; height: 100px; right: 5%; bottom: -40px; }
-        .c4 { width: 70px; height: 70px; right: 20%; bottom: -20px; }
-        
-        .planet-deco {
-            position: absolute; top: 40px; right: -30px;
-            width: 180px; height: 180px;
-            background: #0277BD; border-radius: 50%;
-            opacity: 0.9; z-index: 1; overflow: hidden;
-        }
-        .planet-land { position: absolute; background: #4CAF50; border-radius: 50%; }
-        .pl-1 { width: 80px; height: 60px; top: 20px; left: 10px; }
-        .pl-2 { width: 100px; height: 80px; bottom: -20px; right: 20px; }
-
-        .header-content { position: relative; z-index: 2; margin-top: 15px; }
-        
-        /* Ajuste para la barra superior del home */
-        .home-top-bar {
-            display: flex; justify-content: space-between; align-items: center;
-            margin-bottom: 20px;
-        }
-
-        .brand-top {
-            font-size: 12px; font-weight: 700; color: white;
-            opacity: 0.9; letter-spacing: 1px; text-transform: uppercase;
-        }
-        .welcome-title {
-            font-size: 30px; font-weight: 800; line-height: 1.1; margin: 0;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        .welcome-subtitle {
-            font-size: 16px; font-weight: 400; margin-top: 5px; opacity: 0.95;
-        }
-
-        /* --- ESTILO TARJETAS VERTICALES (GRID ADAPTABLE) --- */
-        .materials-grid {
-            padding: 15px;
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); 
-            gap: 20px;
-        }
-
-        .mat-card-vertical {
-            background-color: #1C1C1E;
-            border-radius: 20px;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
-            border: 1px solid #333;
-            transition: transform 0.2s;
-        }
-        .mat-card-vertical:active { transform: scale(0.98); }
-
-        .mat-hero {
-            height: 120px; width: 100%;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 50px; 
-        }
-        
-        .hero-green { background: linear-gradient(135deg, #66BB6A, #33691E); }
-        .hero-blue { background: linear-gradient(135deg, #42A5F5, #0D47A1); }
-        .hero-orange { background: linear-gradient(135deg, #FFA726, #E65100); }
-        .hero-brown { background: linear-gradient(135deg, #8D6E63, #3E2723); }
-
-        .mat-body {
-            padding: 20px;
-            flex: 1;
-            display: flex; flex-direction: column;
-        }
-
-        .mat-name { font-size: 19px; font-weight: 800; margin-bottom: 8px; color: white; }
-        .mat-desc { font-size: 13px; color: #BBB; line-height: 1.4; }
-
-        .txt-green { color: #66BB6A; }
-        .txt-blue { color: #42A5F5; }
-        .txt-orange { color: #FFA726; }
-        .txt-brown { color: #8D6E63; }
-
-
-        /* MENU HORIZONTAL HOME */
-        .section-title {
-            padding: 20px 15px 10px 15px;
-            font-size: 22px; font-weight: 700; margin: 0; letter-spacing: -0.5px;
-        }
-        .horizontal-scroll {
-            display: flex; overflow-x: auto; gap: 12px;
-            padding: 5px 15px 25px 15px; 
-            -webkit-overflow-scrolling: touch;
-            scrollbar-width: none; 
-        }
-        .horizontal-scroll::-webkit-scrollbar { display: none; }
-
-        .card-visual {
-            flex: 0 0 130px; height: 200px; /* Un poco más pequeño para móviles */
-            border-radius: 22px; padding: 15px;
-            display: flex; flex-direction: column; justify-content: space-between;
-            position: relative; color: white; cursor: pointer;
-            transition: transform 0.2s; overflow: hidden;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-        }
-        .card-visual:active { transform: scale(0.96); }
-        
-        .cv-green { background-color: var(--card-green); }
-        .cv-blue { background-color: var(--card-blue); }
-        .cv-orange { background-color: var(--card-orange); }
-        .cv-teal { background-color: var(--card-teal); }
-
-        .cv-title { font-size: 16px; font-weight: 700; line-height: 1.1; z-index: 2; }
-        .cv-desc { font-size: 12px; opacity: 0.9; line-height: 1.3; z-index: 2; margin-top: auto; padding-bottom: 10px;}
-        
-        .card-icon-center {
-            position: absolute; top: 50%; left: 50%;
-            transform: translate(-50%, -50%); width: 50px; height: 50px;
-            z-index: 1; stroke: white; stroke-width: 1.5; fill: none; opacity: 0.9;
-        }
-
-        /* GRID DE NOTICIAS */
-        .news-grid-container {
-            padding: 15px;
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); /* Stackea en móviles */
-            gap: 20px;
-        }
-
-        .full-news-card {
-            background: #1E1E1E; border-radius: 24px; overflow: hidden;
-            border: 1px solid #333; box-shadow: 0 4px 15px rgba(0,0,0,0.4);
-            cursor: pointer; transition: transform 0.2s;
-            display: flex; flex-direction: column;
-        }
-        .full-news-card:active { transform: scale(0.98); }
-        
-        .full-news-img { 
-            width: 100%; height: 180px; object-fit: cover; display: block; 
-            background: #333; 
-        }
-        
-        .full-news-body { padding: 18px; flex: 1; display: flex; flex-direction: column; }
-        
-        .full-news-date { 
-            display: inline-block; align-self: flex-start;
-            background: rgba(255, 167, 38, 0.15); color: #FFA726; 
-            font-size: 11px; padding: 5px 10px; border-radius: 20px; 
-            font-weight: 700; margin-bottom: 10px; 
-        }
-        
-        .full-news-title { 
-            font-size: 17px; font-weight: 800; margin-bottom: 15px; 
-            line-height: 1.3; color: #fff;
-        }
-        
-        .full-news-link { 
-            margin-top: auto; color: #42A5F5; text-decoration: none; 
-            font-weight: 700; font-size: 13px; display: flex; align-items: center; gap: 8px; 
-        }
-
-        /* NOTICIA HOME */
-        .news-card-home {
-            background: #1E1E1E; border-radius: 20px; overflow: hidden; margin: 0 15px 40px 15px;
-            display: flex; align-items: center; gap: 15px; padding: 12px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3); border: 1px solid #333; cursor: pointer;
-        }
-        .news-card-home img {
-            width: 80px; height: 80px; border-radius: 16px; object-fit: cover; flex-shrink: 0;
-        }
-        .news-card-home-content { flex: 1; display: flex; flex-direction: column; gap: 5px; }
-        .news-card-home-title { font-size: 14px; font-weight: 700; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-        .news-card-home-date { font-size: 11px; color: var(--card-green); font-weight: 600; }
-
-        /* MAPA */
-        #map-container { position: relative; height: 100%; width: 100%; }
-        #mapView { width: 100%; height: 100%; background: #1a1a1a; }
-        .map-ui {
-            position: absolute; z-index: 1000; pointer-events: none;
-            top: 0; left: 0; right: 0; bottom: 0; padding: 20px;
-            display: flex; flex-direction: column; justify-content: space-between;
-            /* Respetar area segura abajo en iPhone */
-            padding-bottom: max(20px, env(safe-area-inset-bottom));
-        }
-        #navPanel {
-            display: none; pointer-events: auto;
-            background: #252525; color: white; padding: 20px; 
-            border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-            border-left: 5px solid var(--card-green); margin-top: 30px;
-        }
-        .bottom-bar { display: flex; justify-content: center; pointer-events: auto; width: 100%; gap: 10px;}
-        .floating-pill {
-            background: #333; color: white; padding: 12px 24px; border-radius: 50px;
-            font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.5); border: 1px solid #444;
-        }
-        #closeRouteBtn {
-            background: #e74c3c; color: white; border: none; padding: 12px 24px;
-            border-radius: 50px; font-weight: bold; cursor: pointer; display: none;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
-        }
-        .leaflet-popup-content-wrapper { background: #222; color: white; border-radius: 16px; }
-        .leaflet-popup-tip { background: #222; }
-        .leaflet-container a.leaflet-popup-close-button { color: white; }
-        .btn-navigate {
-            background: linear-gradient(135deg, var(--card-green), #558B2F);
-            color: white; border: none; padding: 10px 20px; border-radius: 50px;
-            font-weight: 700; cursor: pointer; margin-top: 10px; display: block; width: 100%;
-        }
-
-        /* SPINNER */
-        .loading-spinner {
-            text-align: center; padding: 40px 20px; color: #aaa; font-size: 14px;
-            display: flex; flex-direction: column; align-items: center; gap: 10px; width: 100%;
-        }
-    </style>
+    <!-- ESTILOS -->
+    <link rel="stylesheet" href="css/styles.css">
 </head>
 
 <body>
+
 <div id="app">
 
+    <!-- ===========================
+         HOME
+    ================================ -->
     <section id="home" class="screen active">
-        
+
         <div class="header-illustration">
             <div class="planet-deco">
                 <div class="planet-land pl-1"></div>
                 <div class="planet-land pl-2"></div>
             </div>
+
             <div class="header-content">
-                
                 <div class="home-top-bar">
-                    <div class="btn-back-modern">
-                        <span>☰</span> Menú
-                    </div>
                     <div class="brand-top"><span>♻️ MUNI LOS ÁNGELES</span></div>
                 </div>
 
                 <h1 class="welcome-title">HOLA VECINO 👋</h1>
                 <p class="welcome-subtitle">Te damos la bienvenida</p>
             </div>
-            <div class="cloud-shape c1"></div><div class="cloud-shape c2"></div>
-            <div class="cloud-shape c3"></div><div class="cloud-shape c4"></div>
-            <div style="position:absolute; bottom:0; left:0; width:100%; height:20px; background:white; z-index:0;"></div>
-            <div style="position:absolute; bottom:-1px; left:0; width:100%; height:25px; background: linear-gradient(to bottom, #fff, #000);"></div>
+
+            <!-- NUBES -->
+            <div class="cloud-shape c1"></div>
+            <div class="cloud-shape c2"></div>
+            <div class="cloud-shape c3"></div>
+            <div class="cloud-shape c4"></div>
+
+            <!-- GRADIENTE -->
+            <div style="position:absolute; bottom:0; left:0; width:100%; height:20px; background:white;"></div>
+            <div style="position:absolute; bottom:-1px; height:25px; width:100%; background:linear-gradient(to bottom,#fff,#000);"></div>
         </div>
 
         <h2 class="section-title">Etiquetas</h2>
-        
+
         <div class="horizontal-scroll">
-            
+
             <div class="card-visual cv-green" onclick="openScreen('materiales')">
                 <div class="cv-title">Residuos</div>
-                <div class="cv-desc">Tipos de residuos que se pueden reciclar</div>
-                <svg class="card-icon-center" viewBox="0 0 24 24"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2M10 11v6M14 11v6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <div class="cv-desc">Tipos de residuos</div>
+                <svg class="card-icon-center" viewBox="0 0 24 24"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6"/></svg>
             </div>
 
             <div class="card-visual cv-blue" onclick="openScreen('map')">
                 <div class="cv-title">Puntos</div>
-                <div class="cv-desc">Encuentra dónde entregar tus residuos</div>
-                <svg class="card-icon-center" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                <div class="cv-desc">Dónde reciclar</div>
+                <svg class="card-icon-center" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/></svg>
             </div>
 
             <div class="card-visual cv-orange" onclick="openScreen('noticias')">
                 <div class="cv-title">Noticias</div>
-                <div class="cv-desc">Noticias medio ambiente</div>
-                <svg class="card-icon-center" viewBox="0 0 24 24"><path d="M4 22h16a2 2 0 002-2V4a2 2 0 00-2-2H8a2 2 0 00-2 2v16a2 2 0 01-2 2zm0 0a2 2 0 01-2-2v-9c0-1.1.9-2 2-2h2"/><path d="M18 14h-8"/><path d="M15 18h-5"/></svg>
+                <div class="cv-desc">Medio ambiente</div>
+                <svg class="card-icon-center" viewBox="0 0 24 24"><path d="M4 22h16V4H8a2 2 0 00-2 2v16"/></svg>
             </div>
 
         </div>
 
         <h2 class="section-title">Últimas noticias</h2>
-        
         <div id="home-news-container">
             <div class="loading-spinner">🔄 Cargando noticias...</div>
         </div>
-        
+
     </section>
 
-    <section id="map" class="screen" style="padding: 0; overflow: hidden;">
+
+    <!-- ===========================
+         MAPA
+    ================================ -->
+    <section id="map" class="screen" style="padding:0; overflow:hidden;">
         <div id="map-container">
             <div id="mapView"></div>
+
             <div class="map-ui">
                 <div id="navPanel">
                     <span id="navDistance">0 m</span>
                     <span id="navTime">-- min</span>
                     <span id="navDirection">Calculando...</span>
                 </div>
+
                 <div class="bottom-bar">
-                    <div class="floating-pill" onclick="openScreen('home')"><span>🏠 Menú</span></div>
+                    <div class="floating-pill" onclick="openScreen('home')">🏠 Menú</div>
                     <button id="closeRouteBtn" onclick="limpiarRuta()">❌ Salir</button>
                 </div>
             </div>
         </div>
     </section>
 
+
+    <!-- ===========================
+         MATERIALES
+    ================================ -->
     <section id="materiales" class="screen">
         <div class="header-solid-green">
             <h2 class="cat-title">Categorías</h2>
-            <div class="btn-back-modern" style="margin-top: 15px;" onclick="openScreen('home')">
-                <span>←</span> Volver
-            </div>
+            <div class="btn-back-modern" onclick="openScreen('home')"><span>←</span> Volver</div>
         </div>
 
         <div class="materials-grid">
-            
+
             <div class="mat-card-vertical">
                 <div class="mat-hero hero-green">♻️</div>
                 <div class="mat-body">
@@ -433,7 +149,7 @@
                 </div>
             </div>
 
-             <div class="mat-card-vertical">
+            <div class="mat-card-vertical">
                 <div class="mat-hero hero-brown">📦</div>
                 <div class="mat-body">
                     <div class="mat-name txt-brown">Contenedores</div>
@@ -444,423 +160,43 @@
         </div>
     </section>
 
+
+    <!-- ===========================
+         NOTICIAS
+    ================================ -->
     <section id="noticias" class="screen">
-        <div class="header-illustration" style="min-height: 180px; background: linear-gradient(180deg, #FFCC80 0%, #FFA726 100%);">
+
+        <div class="header-illustration" style="min-height:180px;background:linear-gradient(180deg,#FFCC80,#FFA726);">
             <div class="header-content">
-                <h2 class="welcome-title" style="font-size: 32px;">Noticias</h2>
-                <div class="btn-back-modern" style="margin-top: 15px;" onclick="openScreen('home')">
-                    <span>←</span> Volver
-                </div>
+                <h2 class="welcome-title">Noticias</h2>
+                <div class="btn-back-modern" onclick="openScreen('home')"><span>←</span> Volver</div>
             </div>
-            <div class="cloud-shape c1"></div><div class="cloud-shape c2"></div>
-            <div style="position:absolute; bottom:0; left:0; width:100%; height:20px; background:white; z-index:0;"></div>
-            <div style="position:absolute; bottom:-1px; left:0; width:100%; height:25px; background: linear-gradient(to bottom, #fff, #000);"></div>
+
+            <div class="cloud-shape c1"></div>
+            <div class="cloud-shape c2"></div>
+
+            <div style="position:absolute; bottom:0; height:20px; width:100%; background:white;"></div>
+            <div style="position:absolute; bottom:-1px; height:25px; width:100%; background:linear-gradient(to bottom,#fff,#000);"></div>
         </div>
-        
+
         <div class="news-grid-container" id="news-list">
-             <div class="loading-spinner">
-                 <span style="font-size:30px;">📰</span>
-                 <br>Cargando noticias...
-             </div>
+            <div class="loading-spinner">
+                <span style="font-size:30px;">📰</span><br>Cargando noticias...
+            </div>
         </div>
     </section>
 
 </div>
 
+<!-- LIBRERÍAS -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
 
-<script>
-    // ====== DATOS DE RESPALDO (Por si falla el scraper) ======
-    const fallbackData = [
-        {
-            title: "Los Ángeles la ciudad más parrillera de Chile",
-            date: "21 Nov",
-            img: "https://www.losangeles.cl/wp-content/uploads/2025/11/2-hyhx93.jpg",
-            link: "https://www.losangeles.cl/los-angeles-la-ciudad-mas-parrillera-de-chile/"
-        },
-        {
-            title: "Ruta Q-148 de Chacaico entra en tierra derecha",
-            date: "21 Nov",
-            img: "https://www.losangeles.cl/wp-content/uploads/2025/11/captura-de-pantalla-2025-11-21-152753-400x250.png",
-            link: "https://www.losangeles.cl/ruta-q-148-de-chacaico-entra-en-tierra-derecha-para-su-pavimentacion/"
-        },
-        {
-            title: "Alumno angelino en Olimpiadas de Química",
-            date: "21 Nov",
-            img: "https://www.losangeles.cl/wp-content/uploads/2025/11/matias-cid-400x250.jpg",
-            link: "https://www.losangeles.cl/alumno-angelino-representara-a-la-comuna-en-olimpiadas-nacionales-de-quimica/"
-        },
-        {
-            title: "CESFAM llama a buen uso de antimicrobianos",
-            date: "20 Nov",
-            img: "https://www.losangeles.cl/wp-content/uploads/2025/11/semana-antimicrobianos-cesfam-sur-3-400x250.jpg",
-            link: "https://www.losangeles.cl/cesfam-de-los-angeles-llaman-a-hacer-un-buen-uso-de-los-antimicrobianos/"
-        }
-    ];
+<!-- APP PRINCIPAL -->
+<script src="js/app.js"></script>
 
-    // ====== SCRAPER DE NOTICIAS (LO QUE PEDISTE) ======
-    const URL_OBJETIVO = "https://www.losangeles.cl/noticias/"; 
-    const PROXY_URL = "https://api.allorigins.win/get?url=";
-
-    async function cargarNoticias() {
-        try {
-            console.log("Iniciando Scraper de Noticias...");
-            
-            // 1. Obtener HTML a través del proxy
-            const response = await fetch(PROXY_URL + encodeURIComponent(URL_OBJETIVO));
-            const data = await response.json();
-            
-            if (!data.contents) throw new Error("No se pudo obtener el contenido HTML");
-
-            // 2. Parsear el HTML
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(data.contents, "text/html");
-
-            // 3. Extraer noticias (Selectores genéricos de WordPress)
-            const articulos = doc.querySelectorAll("article, .post, .type-post"); 
-            const noticiasScrapeadas = [];
-
-            articulos.forEach((articulo, index) => {
-                if (index > 8) return; // Límite de noticias
-
-                // Selectores para título, imagen, fecha y link
-                const tituloEl = articulo.querySelector("h2, h3, .entry-title a, .post-title a");
-                const imgEl = articulo.querySelector("img");
-                const dateEl = articulo.querySelector("time, .date, .posted-on, .entry-date");
-                const linkEl = articulo.querySelector("a");
-
-                if (tituloEl && linkEl) {
-                    // Limpieza de imagen
-                    let imagenSrc = imgEl ? (imgEl.getAttribute("src") || imgEl.getAttribute("data-src")) : "";
-                    if (!imagenSrc) imagenSrc = "https://via.placeholder.com/400x250?text=Noticia+LA";
-
-                    // Limpieza de enlace
-                    let fullLink = linkEl.getAttribute("href");
-                    if (fullLink && fullLink.startsWith('/')) {
-                        fullLink = "https://www.losangeles.cl" + fullLink;
-                    }
-
-                    noticiasScrapeadas.push({
-                        title: tituloEl.innerText.trim(),
-                        link: fullLink || "#",
-                        img: imagenSrc,
-                        date: dateEl ? dateEl.innerText.trim() : "Reciente"
-                    });
-                }
-            });
-
-            if (noticiasScrapeadas.length > 0) {
-                renderizarNoticias(noticiasScrapeadas);
-            } else {
-                throw new Error("El scraper no encontró artículos.");
-            }
-
-        } catch (error) {
-            console.warn("Fallo el Scraper. Usando Fallback.", error);
-            renderizarNoticias(fallbackData);
-        }
-    }
-
-    function renderizarNoticias(items) {
-        const homeContainer = document.getElementById('home-news-container');
-        const listContainer = document.getElementById('news-list');
-        
-        if(homeContainer) homeContainer.innerHTML = '';
-        if(listContainer) listContainer.innerHTML = '';
-
-        items.forEach((item, index) => {
-            // 1. WIDGET HOME (Solo la primera noticia)
-            if (index === 0 && homeContainer) {
-                homeContainer.innerHTML = `
-                    <div class="news-card-home" onclick="window.open('${item.link}', '_blank')">
-                        <img src="${item.img}" alt="Portada" onerror="this.src='https://via.placeholder.com/90?text=IMG'">
-                        <div class="news-card-home-content">
-                            <div class="news-card-home-title">${item.title}</div>
-                            <div class="news-card-home-date">📅 ${item.date}</div>
-                        </div>
-                    </div>
-                `;
-            }
-
-            // 2. GRID COMPLETO
-            if (listContainer) {
-                const cardHTML = `
-                    <div class="full-news-card" onclick="window.open('${item.link}', '_blank')">
-                        <img src="${item.img}" class="full-news-img" alt="Noticia" onerror="this.src='https://via.placeholder.com/400x200?text=Noticia'">
-                        <div class="full-news-body">
-                            <span class="full-news-date">📅 ${item.date}</span>
-                            <div class="full-news-title">${item.title}</div>
-                            <div class="full-news-link">Leer nota completa <span>→</span></div>
-                        </div>
-                    </div>
-                `;
-                listContainer.innerHTML += cardHTML;
-            }
-        });
-    }
-
-    // Iniciar carga al abrir
-    document.addEventListener('DOMContentLoaded', cargarNoticias);
-
-
-    // ====== LÓGICA DE MAPA (INTACTA) ======
-    const RADIO_KM = 60; 
-
-    const puntosReciclaje = [
-        { name: "Unimarc Marconi (Vidrio/PET)", type: "mixto", lat: -37.4632, lng: -72.3592, desc: "Marconi / Almte Latorre" },
-        { name: "Terminal de Buses", type: "vidrio", lat: -37.4585, lng: -72.3452, desc: "Luxemburgo / Av. Oriente" },
-        { name: "Plaza Villa Grecia", type: "mixto", lat: -37.4602, lng: -72.3422, desc: "Delfos / Macedonia" },
-        { name: "Parque Sorvicenta 2", type: "vidrio", lat: -37.4510, lng: -72.3530, desc: "Almte Latorre / Da Vinci" },
-        { name: "CESFAM Nororiente", type: "mixto", lat: -37.4550, lng: -72.3350, desc: "Samuel Morse / Bell" },
-        { name: "Pob. Galvarino", type: "vidrio", lat: -37.4450, lng: -72.3550, desc: "Estados Unidos / Rusia" },
-        { name: "Villa Italia", type: "vidrio", lat: -37.4580, lng: -72.3500, desc: "Roma / Florencia" },
-        { name: "Villa Tres Vientos", type: "vidrio", lat: -37.4480, lng: -72.3400, desc: "Calle Local / Av. Tres Vientos" },
-        { name: "Villa Obispo", type: "vidrio", lat: -37.4530, lng: -72.3600, desc: "Orompello / Los Mapuches" },
-        { name: "Villa Cataluña", type: "mixto", lat: -37.4622, lng: -72.3482, desc: "G. Mistral / Cordillera" },
-        { name: "U. de Concepción", type: "mixto", lat: -37.4682, lng: -72.3552, desc: "Ricardo Vicuña / Catirai" },
-        { name: "Bajo Montecea", type: "vidrio", lat: -37.4750, lng: -72.3400, desc: "Montecea / Colo-Colo" },
-        { name: "Parque Nativo", type: "mixto", lat: -37.4500, lng: -72.3450, desc: "M. Auxiliadora / J. Santos Ossa" },
-        { name: "Hogar Luis Orione", type: "vidrio", lat: -37.4650, lng: -72.3350, desc: "Néstor del Río / Chorrillos" },
-        { name: "Condominio El Roble", type: "vidrio", lat: -37.4520, lng: -72.3480, desc: "Costanera Quilque / Arrayán" },
-        { name: "Colegio San Gabriel", type: "vidrio", lat: -37.4590, lng: -72.3380, desc: "Laguna Verde / Dr. Rioseco" },
-        { name: "Jardines de Luxemburgo", type: "vidrio", lat: -37.4505, lng: -72.3520, desc: "Av. Nieves Vásquez" },
-        { name: "Parques Nacionales", type: "vidrio", lat: -37.4525, lng: -72.3475, desc: "Costanera Quilque Norte / Nahuelbuta" },
-        { name: "Villa Puerto Alegre", type: "vidrio", lat: -37.4880, lng: -72.3450, desc: "Río Cali / Buenos Aires" },
-        { name: "Parque Lauquen", type: "vidrio", lat: -37.4920, lng: -72.3520, desc: "5 Norte / 7 Oriente" },
-        { name: "Villa Montreal", type: "mixto", lat: -37.4900, lng: -72.3480, desc: "Montreal / Ottawa" },
-        { name: "Deptos Rodrigo de Quiroga", type: "vidrio", lat: -37.4890, lng: -72.3410, desc: "Balbino Sanhueza / Tte. Merino" },
-        { name: "Villa Filadelfia", type: "vidrio", lat: -37.4860, lng: -72.3360, desc: "Nueva Esperanza / Block 1-4" },
-        { name: "Villa Todos Los Santos", type: "vidrio", lat: -37.4950, lng: -72.3550, desc: "San Pedro / San Agustín" },
-        { name: "Portal Manso de Velasco", type: "mixto", lat: -37.4940, lng: -72.3440, desc: "Calle Carter / Ontario" },
-        { name: "Parque Sevilla", type: "vidrio", lat: -37.4960, lng: -72.3500, desc: "La Llanura / El Salto" },
-        { name: "Villa Los Normandos", type: "vidrio", lat: -37.4970, lng: -72.3480, desc: "La Cumbre / La Llanura" },
-        { name: "Pob. 21 de Mayo", type: "vidrio", lat: -37.4980, lng: -72.3550, desc: "Río Cholguahue" },
-        { name: "Villa Las Américas", type: "mixto", lat: -37.4890, lng: -72.3380, desc: "Los Apaches / Los Mitimaes" },
-        { name: "SML Av. Industrias", type: "vidrio", lat: -37.4850, lng: -72.3300, desc: "Las Industrias / G. Mistral" },
-        { name: "CESFAM Sur", type: "mixto", lat: -37.4915, lng: -72.3425, desc: "Juan Guzmán 430" },
-        { name: "Villa Tolpan", type: "vidrio", lat: -37.5000, lng: -72.3400, desc: "Río Yaqui / Río Magdalena" },
-        { name: "Polideportivo", type: "mixto", lat: -37.4610, lng: -72.3585, desc: "G. Mistral / Marconi" },
-        { name: "Villa Saltos del Petrohué", type: "mixto", lat: -37.4850, lng: -72.3250, desc: "La Frontera 2 / Petrohué 4" },
-        { name: "Martabid", type: "plastico", lat: -37.4980, lng: -72.3400, desc: "Monteaguila Oriente" },
-        { name: "Villa Doña Marta", type: "vidrio", lat: -37.4810, lng: -72.3650, desc: "P. Hurtado / Baquedano" },
-        { name: "Plaza Feria", type: "vidrio", lat: -37.4750, lng: -72.3550, desc: "Ricardo Vicuña / Alcázar" },
-        { name: "Altos del Retiro (Galilea)", type: "mixto", lat: -37.4800, lng: -72.3720, desc: "Sacramento / Misioneros" },
-        { name: "Villa Altos del Retiro", type: "vidrio", lat: -37.4820, lng: -72.3700, desc: "Valle del Monasterio" },
-        { name: "Plaza Pinto", type: "mixto", lat: -37.4720, lng: -72.3600, desc: "Lynch / O’Higgins" },
-        { name: "Villa Galilea", type: "vidrio", lat: -37.4790, lng: -72.3780, desc: "Baquedano / Verbo Divino" },
-        { name: "Villa Retiro Sur", type: "vidrio", lat: -37.4840, lng: -72.3680, desc: "Velo de la Novia" },
-        { name: "El Tranvía", type: "vidrio", lat: -37.4770, lng: -72.3800, desc: "Tranvía / Av. Poniente" },
-        { name: "Escuela Alemania", type: "vidrio", lat: -37.4740, lng: -72.3650, desc: "Cochrane / 5 de Abril" },
-        { name: "Parque Estero Quilque", type: "mixto", lat: -37.4765, lng: -72.3585, desc: "Costanera Quilque Sur" },
-        { name: "Pob. 2 de Septiembre", type: "vidrio", lat: -37.4730, lng: -72.3680, desc: "Lynch / Pedro Luna" },
-        { name: "Estadio Municipal", type: "mixto", lat: -37.4802, lng: -72.3502, desc: "Av. Los Ángeles / Los Robles" },
-        { name: "Pob. Real Victoria", type: "vidrio", lat: -37.4850, lng: -72.3550, desc: "Jaime de la Vega" },
-        { name: "Laguna Esmeralda", type: "mixto", lat: -37.4782, lng: -72.3552, desc: "Colo Colo / Urenda" },
-        { name: "Pob. Santiago Bueras", type: "vidrio", lat: -37.4650, lng: -72.3680, desc: "Chacabuco / Cerro Manquehue" },
-        { name: "Pob. Orompello", type: "vidrio", lat: -37.4600, lng: -72.3650, desc: "Rosendo Matus / Manuel Gavilán" },
-        { name: "Villa Santa Fe", type: "vidrio", lat: -37.4580, lng: -72.3720, desc: "Los Raulíes / Orompello" },
-        { name: "Villa Génesis", type: "vidrio", lat: -37.4500, lng: -72.3800, desc: "Chile Lindo / Media Luna" },
-        { name: "Pob. Lagos de Chile", type: "vidrio", lat: -37.4550, lng: -72.3650, desc: "Lago Neltume / P. Hurtado" },
-        { name: "Villa Los Profesores", type: "mixto", lat: -37.4480, lng: -72.3650, desc: "Las Torcazas / Aguas Calientes" },
-        { name: "Ercilla / Orompello", type: "vidrio", lat: -37.4610, lng: -72.3620, desc: "Ercilla / Orompello" },
-        { name: "Pob. O'Higgins", type: "vidrio", lat: -37.4620, lng: -72.3700, desc: "Las Azucenas" },
-        { name: "Villa Las Tranqueras", type: "mixto", lat: -37.4550, lng: -72.3700, desc: "El Labriego / Las Tranqueras" },
-        { name: "Lomas de Curamavida", type: "vidrio", lat: -37.4420, lng: -72.3750, desc: "Sector Curamavida" },
-        { name: "Villa San Luis", type: "vidrio", lat: -37.4450, lng: -72.3600, desc: "Nevados del Salado" },
-        { name: "Villa Curamonte", type: "vidrio", lat: -37.4400, lng: -72.3550, desc: "Rotonda Curamonte" },
-        { name: "Camino a Nacimiento", type: "vidrio", lat: -37.5000, lng: -72.4000, desc: "Country Santa Eliana (Km 5)" },
-        { name: "Delegación Santa Fe", type: "mixto", lat: -37.4589, lng: -72.5843, desc: "O'Higgins S/N" },
-        { name: "San Carlos Purén (Plaza)", type: "mixto", lat: -37.5450, lng: -72.2600, desc: "Lautaro / Millarrahue" },
-        { name: "San Carlos Purén (Av BioBio)", type: "vidrio", lat: -37.5420, lng: -72.2620, desc: "Av. Biobío / Caupolicán" },
-        { name: "Delegación Saltos del Laja", type: "mixto", lat: -37.2180, lng: -72.3850, desc: "Av. El Salto 476" },
-        { name: "Multicancha El Peral", type: "mixto", lat: -37.5100, lng: -72.2800, desc: "Av. El Peral / La Reserva" },
-        { name: "Delegación Chacayal", type: "mixto", lat: -37.3800, lng: -72.2500, desc: "Arturo Prat 430" },
-        { name: "Villa El Esfuerzo (Rarinco)", type: "vidrio", lat: -37.4000, lng: -72.3000, desc: "San Alfonso / Manuel Badilla" },
-        { name: "Villa Miraflores (El Peral)", type: "vidrio", lat: -37.5120, lng: -72.2820, desc: "Los Jazmines / Los Clarines" },
-        { name: "Punto Verde Polideportivo", type: "mixto", lat: -37.4610, lng: -72.3585, desc: "Av. Gabriela Mistral / Marconi" },
-        { name: "Punto Limpio Quilque Norte", type: "mixto", lat: -37.4520, lng: -72.3480, desc: "Av. Costanera Quilque Norte / Nahuelbuta" },
-        { name: "Punto Parque Sorvicenta", type: "mixto", lat: -37.4505, lng: -72.3520, desc: "Av. Nieves Vásquez / Jardines Luxemburgo" },
-        { name: "Punto Villa Filadelfia", type: "mixto", lat: -37.4850, lng: -72.3350, desc: "Nueva Esperanza, Block 1-4" },
-        { name: "Punto Villa Las Tranqueras", type: "mixto", lat: -37.4550, lng: -72.3700, desc: "El Labriego / Las Tranqueras 5" },
-        { name: "JJVV Villa Galilea", type: "mixto", lat: -37.4780, lng: -72.3750, desc: "Baquedano / Agustinos" },
-        { name: "Altos del Retiro (Galilea)", type: "mixto", lat: -37.4800, lng: -72.3720, desc: "Sacramento / Misioneros" },
-        { name: "CESFAM Nuevo Horizonte", type: "mixto", lat: -37.4480, lng: -72.3650, desc: "Las Torcazas / Aguas Calientes" },
-        { name: "Portal Manso de Velasco", type: "mixto", lat: -37.4950, lng: -72.3450, desc: "Costanera Paillihue / Av. Oriente" }
-    ];
-
-    let map = null;
-    let routingControl = null;
-    let myPosition = null;
-    let userMarker = null;
-    let watchId = null;
-    let isNavigating = false;
-
-    function openScreen(id) {
-        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-        document.getElementById(id).classList.add('active');
-        if (id === 'map') setTimeout(iniciarRastreo, 200);
-    }
-
-    function iniciarRastreo() {
-        if (map) { map.invalidateSize(); return; }
-
-        const laLat = -37.4697;
-        const laLng = -72.3537;
-
-        map = L.map('mapView', { zoomControl: false }).setView([laLat, laLng], 14);
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(map);
-
-        if (navigator.geolocation) {
-            watchId = navigator.geolocation.watchPosition(
-                (pos) => actualizarPosicion(pos.coords.latitude, pos.coords.longitude),
-                (err) => {
-                    console.warn("GPS inactivo.");
-                    actualizarPosicion(laLat, laLng);
-                },
-                { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
-            );
-        } else {
-            actualizarPosicion(laLat, laLng);
-        }
-    }
-
-    function actualizarPosicion(lat, lng) {
-        myPosition = { lat, lng };
-
-        if (!userMarker) {
-            const userIcon = L.divIcon({ 
-                className: 'user-pulse', 
-                html: '<div style="width:16px;height:16px;background:#2ECC71;border:2px solid white;border-radius:50%;box-shadow:0 0 10px #2ECC71;"></div>', 
-                iconSize: [20, 20] 
-            });
-            userMarker = L.marker([lat, lng], {icon: userIcon, zIndexOffset: 1000}).addTo(map);
-            map.setView([lat, lng], 15);
-            procesarPuntos(lat, lng);
-        } else {
-            userMarker.setLatLng([lat, lng]);
-        }
-
-        if (isNavigating) {
-            map.panTo([lat, lng]); 
-            if (routingControl) {
-                const waypoints = routingControl.getWaypoints();
-                const destino = waypoints[waypoints.length - 1].latLng;
-                routingControl.setWaypoints([L.latLng(lat, lng), destino]);
-            }
-        }
-    }
-
-    function procesarPuntos(userLat, userLng) {
-        puntosReciclaje.forEach(p => {
-            const distancia = calcularDistancia(userLat, userLng, p.lat, p.lng);
-            if (distancia <= RADIO_KM) {
-                crearMarcador(p, distancia);
-            }
-        });
-    }
-
-    function crearMarcador(p, dist) {
-        let cssClass = 'pin-mixto'; let iconEmoji = '♻️';
-        let pinColor = '#2ECC71'; 
-        
-        if (p.type === 'vidrio') { pinColor = '#3498DB'; iconEmoji = '🍾'; }
-        if (p.type === 'plastico') { pinColor = '#E67E22'; iconEmoji = '🥤'; }
-        if (p.type === 'papel') { pinColor = '#F1C40F'; iconEmoji = '📦'; }
-
-        const customIcon = L.divIcon({
-            className: 'custom-div-icon',
-            html: `<div style='position:relative; width:24px; height:34px;'>
-                    <div style='width:24px; height:24px; border-radius:50% 50% 50% 0; background:${pinColor}; position:absolute; transform:rotate(-45deg); left:0; top:0; box-shadow:0 2px 5px rgba(0,0,0,0.5);'></div>
-                    <div style='width:14px; height:14px; background:white; position:absolute; border-radius:50%; top:2px; left:5px; z-index:1;'></div>
-                   </div>`,
-            iconSize: [24, 34],
-            iconAnchor: [12, 34]
-        });
-
-        const marker = L.marker([p.lat, p.lng], { icon: customIcon }).addTo(map);
-
-        marker.bindPopup(`
-            <div style="text-align:center;">
-                <strong style="font-size:16px;">${p.name}</strong><br>
-                <span style="color:#aaa; font-size:12px;">${p.desc}</span><br>
-                <span style="display:inline-block; background:rgba(255,255,255,0.1); padding:2px 8px; border-radius:10px; font-size:11px; margin:5px 0;">📍 A ${dist.toFixed(1)} km</span>
-                <button class="btn-navigate" onclick="calcularRuta(${p.lat}, ${p.lng})">
-                    🚀 IR AHORA
-                </button>
-            </div>
-        `);
-    }
-
-    function calcularRuta(destLat, destLng) {
-        if (!myPosition) { alert("Esperando señal GPS..."); return; }
-        
-        limpiarRuta(false);
-        map.closePopup();
-        isNavigating = true;
-
-        document.getElementById('navPanel').style.display = 'block';
-        document.getElementById('closeRouteBtn').style.display = 'block';
-
-        routingControl = L.Routing.control({
-            waypoints: [L.latLng(myPosition.lat, myPosition.lng), L.latLng(destLat, destLng)],
-            routeWhileDragging: false, 
-            language: 'es', 
-            show: false,
-            lineOptions: { styles: [{color: '#2ECC71', opacity: 0.8, weight: 7}] },
-            createMarker: function() { return null; },
-            addWaypoints: false
-        }).addTo(map);
-
-        routingControl.on('routesfound', function(e) {
-            const routes = e.routes;
-            const route = routes[0];
-            const summary = route.summary;
-            const dist = summary.totalDistance < 1000 ? Math.round(summary.totalDistance) + ' m' : (summary.totalDistance / 1000).toFixed(1) + ' km';
-            const time = Math.round(summary.totalTime / 60) + ' min';
-            
-            const instructions = route.instructions;
-            if (instructions && instructions.length > 0) {
-                const nextStep = instructions[0]; 
-                document.getElementById('navDirection').innerText = nextStep.text;
-                document.getElementById('navDirection').innerHTML = getIconForStep(nextStep.type) + ' ' + nextStep.text;
-            }
-
-            document.getElementById('navDistance').innerText = dist;
-            document.getElementById('navTime').innerText = time;
-        });
-    }
-
-    function getIconForStep(type) {
-        if (type === 'Left') return '⬅️';
-        if (type === 'Right') return '➡️';
-        if (type === 'Straight') return '⬆️';
-        if (type === 'Roundabout') return '🔄';
-        return '📍';
-    }
-
-    function limpiarRuta(centrar = true) {
-        if (routingControl) { map.removeControl(routingControl); routingControl = null; }
-        
-        document.getElementById('navPanel').style.display = 'none';
-        document.getElementById('closeRouteBtn').style.display = 'none';
-        isNavigating = false;
-
-        if (centrar && myPosition && map) {
-             map.flyTo([myPosition.lat, myPosition.lng], 15, { duration: 1.5 });
-        }
-    }
-
-    function calcularDistancia(lat1, lon1, lat2, lon2) {
-        const R = 6371; 
-        const dLat = (lat2 - lat1) * Math.PI / 180;
-        const dLon = (lon2 - lon1) * Math.PI / 180;
-        const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                  Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-        return R * c;
-    }
-</script>
+<!-- SCRIPT EXTRA QUE TENÍAS SUELTO -->
+<script src="js/mapas-extra.js"></script>
 
 </body>
 </html>
